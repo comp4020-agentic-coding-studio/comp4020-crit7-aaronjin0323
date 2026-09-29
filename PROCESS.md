@@ -59,6 +59,19 @@ with a test that fails on the old link
 The full run is
 [`c77b1de...08e21fe`](https://github.com/comp4020-agentic-coding-studio/comp4020-crit7-aaronjin0323/compare/c77b1de...08e21fe).
 
+**Directing from use, after the deploy.** Using the live app, I found myself
+scrolling back up to the week after every pick. I asked for:
+
+> change the your week calendar and courses and class selector side-by-side,
+> so that users don't have to scroll up and down too much
+
+On a wide screen, the week now stays pinned beside the course list and scrolls
+inside itself when the window is short. Phones still stack
+([`80593da`](https://github.com/comp4020-agentic-coding-studio/comp4020-crit7-aaronjin0323/commit/80593da)).
+It was checked by measuring, not by eye: scrolled 1800px down the list, the
+week still sits 12px from the top. No page overflow at 1440, 1280, 1150 or 390
+wide.
+
 **How I know it's right.** `pnpm check` holds the flow. I held the grid layout
 by measuring the rendered page: no horizontal overflow at 390px, and no clipped
 block at either width. I hold the data by keeping the scraper committed next to
