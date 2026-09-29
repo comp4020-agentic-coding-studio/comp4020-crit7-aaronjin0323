@@ -1,54 +1,66 @@
 # Process overview
 
-<!-- TEMPLATE: this file is a shape to fill in, not a form. Replace everything
-     in it with your own overview, and delete this comment — `pnpm
-     check:evidence` will remind you if it's still here. -->
-
-Written by you, for a reader: how you got from the brief to the harness and
-agentic workflow behind this submission. Markers read this file and follow its
-citations; they don't trawl the repo for evidence you didn't point at.
-
-This file is the shape; the course site's
-[assessment page](https://comp.anu.edu.au/courses/comp4020-agentic-coding-studio/topics/assessment/#what-you-submit)
-is the requirement, and its
-[word counts](https://comp.anu.edu.au/courses/comp4020-agentic-coding-studio/topics/assessment/#word-counts)
-cover every deliverable.
-
 ## What I built
 
-A sentence or two. `README.md` is where the account of what the app is and what
-good means here lives; this file is how you got there.
+A timetable planner for Semester 2 2026 COMP courses: save a draft, choose a
+class for every activity, and see clashes week by week before enrolment.
+`README.md` covers what it is and what good means for it.
 
 ## How I got here
 
-The account of the process: how the work actually went, and how you knew the
-result was right. Tell it in whatever order makes it clear. A weekly prototype
-needs a paragraph or two; an assignment needs more.
+**Directing: choosing the slice.** I picked the system from my own experience
+of it:
 
-Cite the record as you go, as links whose text is the commit hash or range and
-whose target is this repo's commit or compare URL, so a reader clicks straight
-to the evidence:
+> I would like to fix ANU timetabling system
 
-- one commit: [`a1b2c3d`](https://github.com/YOUR-ORG/YOUR-REPO/commit/a1b2c3d)
-- a range:
-  [`a1b2c3d...e4f5a6b`](https://github.com/YOUR-ORG/YOUR-REPO/compare/a1b2c3d...e4f5a6b)
+Before building anything, I narrowed it down with four decisions. The pain is
+"can't plan before enrolling". The thing that persists is a saved draft
+timetable. The scope is every COMP course. The semester is S2 2026, because the
+2027 viewer had no COMP classes yet. Those four answers set the data model:
+plans, their courses and their picks. They also ruled out everything that looks
+like enrolment. I also chose the commit policy: commit freely, but ask me before
+every push and every deploy.
 
-To pair a prompt with the commit it produced, quote the prompt (curated, not a
-full transcript) next to the citation:
+**The harness came first.** Before any app code, CLAUDE.md
+([`1731d32`](https://github.com/comp4020-agentic-coding-studio/comp4020-crit7-aaronjin0323/commit/1731d32))
+carried over last crit's general lessons and dropped that crit's content rules.
+It added the rules this stack needs: the schema is the ground truth, the volume
+outlives every deploy, forms work without JavaScript, CI probes `/api/events`,
+and **reference data comes from a source, never from memory**.
 
-> the prompt, verbatim
+**Grounding: real data, from a script.** Following that last rule, the class
+times are scraped from ANU's public timetable viewer, not written from memory
+([`c77b1de`](https://github.com/comp4020-agentic-coding-studio/comp4020-crit7-aaronjin0323/commit/c77b1de)).
+The viewer fought back. It's an ASP.NET form, so its postback target had to be
+read from the page, and its week ranges use a non-breaking hyphen (U+2011) that
+a plain `-` split doesn't find. The hyphen is now a CLAUDE.md lesson, and the
+parser is tested on the raw characters.
 
-Screenshots are welcome where one carries the point better than a sentence does.
-Commit the file to this repo and link it with a **relative** path, which is what
-makes it render on GitHub: `![alt text](docs/before.png)`. Images don't count
-towards the word count and don't replace the citation.
+**The slice, end to end.** One commit holds the whole working flow: schema and
+migrations, seeding at boot, form endpoints, the plan page and its week grid
+([`8ec0a69`](https://github.com/comp4020-agentic-coding-studio/comp4020-crit7-aaronjin0323/commit/8ec0a69)).
+The guestbook table is dropped by its own migration so the live volume
+migrates cleanly. Next come the spec tests for the flow and the rules
+([`5311734`](https://github.com/comp4020-agentic-coding-studio/comp4020-crit7-aaronjin0323/commit/5311734)).
+Both clash tests were seen to fail with the overlap rule deliberately broken
+before they were trusted.
 
-## Before you ship
+**Correcting: looking, not assuming.** The tests passed first time, so we
+checked the rendered page at desktop and at 390×844. That turned up three
+things the suite couldn't see:
 
-`pnpm check:evidence` verifies that this comment is gone, that your citations
-resolve to real commits, that a crit week's reflection entry is in
-`reflections/`, and that your `CLAUDE.md` is there. It checks that your account
-is traceable, not that it is good: that is the marker's call.
+- one-hour blocks were clipped;
+- in a clash, one block's course label had shrunk to nothing;
+- the home page's "source" link pointed at a URL with a description glued on.
 
-Images aren't checked: unlike a citation whose SHA doesn't resolve, a broken
-image is visible the moment this file is rendered on GitHub.
+The last one would have failed CI's link check after the deploy. We fixed it
+with a test that fails on the old link
+([`08e21fe`](https://github.com/comp4020-agentic-coding-studio/comp4020-crit7-aaronjin0323/commit/08e21fe)).
+The full run is
+[`c77b1de...08e21fe`](https://github.com/comp4020-agentic-coding-studio/comp4020-crit7-aaronjin0323/compare/c77b1de...08e21fe).
+
+**How I know it's right.** `pnpm check` holds the flow. I held the grid layout
+by measuring the rendered page: no horizontal overflow at 390px, and no clipped
+block at either width. I hold the data by keeping the scraper committed next to
+its output, so anyone can re-take the copy and diff it. Three general lessons
+from this week went into CLAUDE.md for next time.
