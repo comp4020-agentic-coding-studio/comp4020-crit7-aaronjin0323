@@ -1,17 +1,25 @@
+/* Palette and type follow ANU's public web design tokens (the "una-" custom
+   properties on anu.edu.au): Public Sans, near-black ink, ANU gold as the one
+   accent, and their functional red/green for status. */
 :root {
-  --ink: #1a1c21;
-  --muted: #555b66;
-  --line: #d9dce1;
+  --ink: #131313; /* una-neutral-900 */
+  --muted: #525252; /* una-neutral-650 */
+  --line: #e2e2e2; /* una-neutral-200 */
+  --field: #8c8c8c; /* una-neutral-500: a form border still reads at 3:1 */
   --paper: #ffffff;
-  --wash: #f4f5f7;
-  --link: #0b4fc2;
-  --accent: #1c3f7a;
-  --clash: #b3261e;
-  --clash-wash: #fdecea;
-  --todo: #8a4b00;
-  --todo-wash: #fff4e0;
-  --ok: #1e6b35;
-  --ok-wash: #e7f5ea;
+  --wash: #f6f6f6; /* una-neutral-100 */
+  --gold: #be830e; /* una-primary-700, ANU gold */
+  --gold-deep: #a36a00; /* una-primary-800: gold that holds contrast on white */
+  --gold-wash: #fcf0d7; /* una-primary-200 */
+  --gold-ink: #7a4d00; /* una-primary-1000 */
+  --clash: #a40303; /* una-functional-1 */
+  --clash-wash: #ffe3e3;
+  --todo: var(--gold-ink);
+  --todo-wash: var(--gold-wash);
+  --ok: #336103; /* una-functional-4 */
+  --ok-wash: #effada;
+  --radius: 0.5rem; /* una-radius-2 */
+  --shadow: 0 2px 4px rgb(37 37 37 / 8%); /* una-shadow-100 */
   --slot: 2.1rem; /* one half hour in the week grid; an hour fits four lines */
   --day-head: 2.25rem;
   color-scheme: light;
@@ -27,49 +35,92 @@
 
 body {
   margin: 0;
-  font-family: system-ui, sans-serif;
+  font-family: "Public Sans", system-ui, sans-serif;
   line-height: 1.5;
   color: var(--ink);
   background: var(--paper);
 }
 
+/* ANU's black navigation band; the current page is a white tab that joins
+   the page below it. */
 nav[aria-label="site"] {
+  --measure: 72rem; /* main's max-width, so the tabs start where the page does */
+  --gutter: clamp(1rem, 4vw, 2rem);
   display: flex;
-  gap: 1.25rem;
-  padding: 0.75rem clamp(1rem, 4vw, 2rem);
-  background: var(--accent);
+  padding: 0 max(var(--gutter), (100% - var(--measure)) / 2 + var(--gutter));
+  background: var(--ink);
+}
+
+body:has(main.wide) nav[aria-label="site"] {
+  --measure: 110rem;
 }
 
 nav[aria-label="site"] a {
+  padding: 0.8rem 1rem;
   color: #fff;
   text-decoration: none;
-  font-weight: 600;
+  font-weight: 500;
+  letter-spacing: 0.03rem;
+}
+
+nav[aria-label="site"] a:hover {
+  text-decoration: underline;
+  text-decoration-color: var(--gold);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 0.35em;
 }
 
 nav[aria-label="site"] a[aria-current="page"] {
-  text-decoration: underline;
-  text-underline-offset: 0.3em;
+  background: var(--paper);
+  color: var(--ink);
+}
+
+nav[aria-label="site"] a:focus-visible {
+  outline-color: #e8b557; /* una-primary-500, visible on the black band */
+  outline-offset: -3px;
 }
 
 main {
   max-width: 72rem;
   margin: 0 auto;
-  padding: 1.5rem clamp(1rem, 4vw, 2rem) 4rem;
+  padding: 2rem clamp(1rem, 4vw, 2rem) 4rem;
 }
 
 h1 {
-  margin: 0 0 0.5rem;
-  font-size: clamp(1.6rem, 4vw, 2.2rem);
+  margin: 0 0 1rem;
+  font-size: clamp(1.75rem, 4vw, 2.25rem);
+  font-weight: 600;
   line-height: 1.2;
+  letter-spacing: -0.05rem;
+}
+
+/* the short gold rule ANU sets under a page title */
+h1::after {
+  content: "";
+  display: block;
+  width: 5.5rem;
+  height: 3px;
+  margin-top: 0.6rem;
+  background: var(--gold);
 }
 
 h2 {
   margin: 2rem 0 0.75rem;
-  font-size: 1.3rem;
+  font-size: 1.45rem;
+  font-weight: 500;
+  line-height: 1.2;
+  letter-spacing: -0.03rem;
 }
 
 a {
-  color: var(--link);
+  color: var(--ink);
+  text-underline-offset: 0.2em;
+}
+
+a:hover {
+  color: var(--gold-ink);
+  text-decoration-color: var(--gold);
+  text-decoration-thickness: 2px;
 }
 
 .visually-hidden {
@@ -103,34 +154,67 @@ button {
 
 input:not([type="radio"]),
 select {
-  padding: 0.4rem 0.6rem;
-  border: 1px solid #8a909b;
-  border-radius: 0.3rem;
+  padding: 0.45rem 0.65rem;
+  border: 1px solid var(--field);
+  border-radius: 0.25rem;
+  background: var(--paper);
+  color: var(--ink);
   min-width: 0;
 }
 
+input[type="radio"] {
+  accent-color: var(--ink);
+}
+
+/* ANU's button set: black filled for everyday actions, black outlined for
+   quiet ones, and the gold gradient kept for the one action a page leads to. */
 button {
-  padding: 0.4rem 1rem;
-  border: 1px solid var(--accent);
-  border-radius: 0.3rem;
-  background: var(--accent);
+  padding: 0.45rem 1.1rem;
+  border: 1px solid var(--ink);
+  border-radius: var(--radius);
+  background: var(--ink);
   color: #fff;
+  font-weight: 600;
   cursor: pointer;
 }
 
+button:hover {
+  background: #333; /* una-neutral-700 */
+}
+
 button.quiet {
-  background: transparent;
-  color: var(--accent);
+  background: var(--paper);
+  color: var(--ink);
+}
+
+button.quiet:hover {
+  background: var(--wash);
 }
 
 button.danger {
   border-color: var(--clash);
-  background: transparent;
+  background: var(--paper);
   color: var(--clash);
 }
 
+button.danger:hover {
+  background: var(--clash-wash);
+}
+
+.new-plan button,
+.add-course button {
+  border-color: transparent;
+  background: linear-gradient(90deg, #cd9015 6%, #fff7e9 108%) border-box;
+  color: #000;
+}
+
+.new-plan button:hover,
+.add-course button:hover {
+  background: linear-gradient(270deg, #d19010 0%, #fff7e9 108%) border-box;
+}
+
 :focus-visible {
-  outline: 3px solid #f2a900;
+  outline: 3px solid var(--gold-deep);
   outline-offset: 2px;
 }
 
@@ -189,8 +273,14 @@ form.inline label,
 
 .plan-manage summary {
   cursor: pointer;
-  color: var(--link);
   width: fit-content;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.plan-manage summary:hover {
+  color: var(--gold-ink);
+  text-decoration-color: var(--gold);
 }
 
 .tally {
@@ -243,7 +333,8 @@ form.inline label,
 .week-scroll {
   overflow: auto;
   border: 1px solid var(--line);
-  border-radius: 0.4rem;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
 }
 
 .week {
@@ -254,8 +345,25 @@ form.inline label,
 
 .times {
   position: relative;
+  display: flow-root; /* so the corner's negative margin can't collapse into ours */
   margin-top: var(--day-head);
   height: calc(var(--slots) * var(--slot));
+}
+
+/* the corner above the times, so the black band runs the full width. It
+   sticks with the day headings and covers the hour labels scrolling under
+   it; a grid pseudo-element would take a cell and shift the days along. */
+.times::before {
+  content: "";
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: block;
+  box-sizing: border-box; /* "*" doesn't reach pseudo-elements */
+  height: var(--day-head);
+  margin-top: calc(-1 * var(--day-head));
+  background: var(--ink);
+  border-bottom: 3px solid var(--gold);
 }
 
 .times span {
@@ -276,14 +384,17 @@ form.inline label,
   border-left: 1px solid var(--line);
 }
 
+
 .day h3 {
   height: var(--day-head);
   margin: 0;
   padding: 0.5rem;
   font-size: 0.9rem;
+  font-weight: 600;
   text-align: center;
-  background: var(--wash);
-  border-bottom: 1px solid var(--line);
+  color: #fff;
+  background: var(--ink); /* the black band again, so the days read as headings */
+  border-bottom: 3px solid var(--gold);
 }
 
 .slots {
@@ -408,10 +519,11 @@ form.inline label,
 
 .course {
   margin-block: 1.25rem;
-  padding: 0.75rem 1rem 1rem;
+  padding: 0.85rem 1rem 1rem;
   border: 1px solid var(--line);
-  border-top: 5px solid var(--edge);
-  border-radius: 0.4rem;
+  border-top: 4px solid var(--edge);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
   scroll-margin-top: 1rem;
 }
 
@@ -469,6 +581,8 @@ form.inline label,
 .course-head h3 {
   margin: 0;
   font-size: 1.15rem;
+  font-weight: 600;
+  letter-spacing: -0.02rem;
 }
 
 .course-head h3 span {
@@ -482,7 +596,12 @@ form.inline label,
 .pick details {
   margin: 0.75rem 0 0;
   border: 1px solid var(--line);
-  border-radius: 0.3rem;
+  border-radius: 0.25rem;
+}
+
+.pick-head:hover,
+.course-head:hover h3 {
+  color: var(--gold-ink);
 }
 
 .pick-head {
