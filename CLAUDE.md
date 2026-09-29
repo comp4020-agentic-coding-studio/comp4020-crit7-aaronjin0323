@@ -166,6 +166,13 @@ these tools, not tied to any one prototype's content.
   screenshot is really wider and reports overflow that isn't there. Emulate
   the viewport through CDP (`Emulation.setDeviceMetricsOverride`, `mobile`
   on) and check `scrollWidth` against it.
+- **`* { box-sizing: border-box }` doesn't reach `::before`/`::after`.** A
+  pseudo-element given the same height and border as its neighbour comes out
+  taller by the border. Set `box-sizing` on the pseudo-element itself, and
+  compare computed heights rather than trusting the numbers match.
+- **A background paints under content, so it can't cover anything.** To mask
+  content scrolling beneath a pinned corner, the mask has to be a positioned
+  element (e.g. a sticky pseudo-element with a `z-index`), not a background.
 - **A recorded "source" field is not necessarily a bare URL.** Notes get
   appended to it. Anything that turns data into an `href` extracts and tests
   the URL shape, or the link checker finds it after the deploy.
