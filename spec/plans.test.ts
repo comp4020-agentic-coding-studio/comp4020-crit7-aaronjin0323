@@ -111,6 +111,35 @@ describe("a draft timetable", () => {
     expect(after.doc.querySelector(".tally .is-clash")?.textContent).toMatch(/^\d+ clash(es)?$/);
   });
 
+  it("folds each course, and says what's left even when folded", async () => {
+    // Folding hides the "choose one" tags, so the summary has to carry their
+    // count: it must agree with the tags inside, before and after a pick.
+    const plan = await newPlan("Folding draft");
+    const action = `/api${plan}`;
+    await post(action, { intent: "add-course", course: "COMP2100_S2_(01)" });
+
+    const summary = async () => {
+      const { doc } = await page(plan);
+      const course = doc.querySelector("details.course");
+      expect(course?.hasAttribute("open"), "a course starts unfolded, so it works without script").toBe(true);
+      const todo = course?.querySelectorAll("legend .tag.is-todo").length ?? -1;
+      return { todo, text: course?.querySelector("summary .tag")?.textContent };
+    };
+
+    const before = await summary();
+    expect(before.todo).toBeGreaterThan(0);
+    expect(before.text).toBe(`${before.todo} to choose`);
+
+    await post(action, {
+      intent: "pick",
+      activity: "COMP2100_S2_(01)-ComA",
+      class: "COMP2100_S2_(01)-ComA/03",
+    });
+    const after = await summary();
+    expect(after.todo).toBe(before.todo - 1);
+    expect(after.text).toBe(after.todo ? `${after.todo} to choose` : "all chosen");
+  });
+
   it("refuses a class that isn't an option of the activity", async () => {
     const plan = await newPlan("Tampered draft");
     const action = `/api${plan}`;

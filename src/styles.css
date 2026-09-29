@@ -421,6 +421,45 @@ form.inline label,
   gap: 0.5rem;
   align-items: baseline;
   justify-content: space-between;
+  cursor: pointer;
+  list-style: none;
+}
+
+.course-head::-webkit-details-marker {
+  display: none;
+}
+
+/* the fold marker, drawn so it sits with the heading rather than before the
+   flex row; it points down when the course is open */
+.course-head h3::before {
+  content: "";
+  display: inline-block;
+  width: 0.5em;
+  height: 0.5em;
+  margin-right: 0.5em;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: translateY(-0.15em) rotate(-45deg);
+  transition: transform 0.15s;
+}
+
+.course[open] > .course-head h3::before {
+  transform: translateY(-0.3em) rotate(45deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .course-head h3::before {
+    transition: none;
+  }
+}
+
+.course:not([open]) {
+  padding-bottom: 0.75rem;
+}
+
+.remove-course {
+  margin-top: 0.75rem;
+  text-align: right;
 }
 
 .course-head h3 {
@@ -454,6 +493,8 @@ form.inline label,
 }
 
 .tag {
+  display: inline-block; /* a pill wraps whole, never split across lines */
+  white-space: nowrap;
   margin-left: 0.5rem;
   padding: 0.05rem 0.45rem;
   border-radius: 999px;
@@ -466,6 +507,16 @@ form.inline label,
 .tag.is-todo {
   background: var(--todo-wash);
   color: var(--todo);
+}
+
+.tag.is-clash {
+  background: var(--clash-wash);
+  color: var(--clash);
+}
+
+.tag.is-done {
+  background: var(--ok-wash);
+  color: var(--ok);
 }
 
 .options {
