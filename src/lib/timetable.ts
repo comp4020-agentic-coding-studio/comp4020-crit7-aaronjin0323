@@ -18,6 +18,11 @@ export function parseWeeks(weeks: string): number[] {
   return [...out].sort((a, b) => a - b);
 }
 
+/** A timetable code as an HTML id: "COMP2100_S2_(01)-ComA" → "COMP2100-S2--01--ComA".
+ *  The plan page names its anchors with it and the form endpoint redirects
+ *  to them, so both sides have to agree. */
+export const anchor = (code: string) => code.replace(/[^A-Za-z0-9]/g, "-");
+
 /** Minutes since midnight → "14:00". */
 export function formatTime(minutes: number): string {
   return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;

@@ -1,40 +1,476 @@
+:root {
+  --ink: #1a1c21;
+  --muted: #555b66;
+  --line: #d9dce1;
+  --paper: #ffffff;
+  --wash: #f4f5f7;
+  --link: #0b4fc2;
+  --accent: #1c3f7a;
+  --clash: #b3261e;
+  --clash-wash: #fdecea;
+  --todo: #8a4b00;
+  --todo-wash: #fff4e0;
+  --ok: #1e6b35;
+  --ok-wash: #e7f5ea;
+  --slot: 2.1rem; /* one half hour in the week grid; an hour fits four lines */
+  --day-head: 2.25rem;
+  color-scheme: light;
+  /* phones otherwise inflate text in wide blocks, which breaks the grid's
+     four-lines-an-hour arithmetic */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+* {
+  box-sizing: border-box;
+}
+
 body {
   margin: 0;
-  padding: 2rem;
   font-family: system-ui, sans-serif;
-  line-height: 1.6;
-  color: #1a1a1a;
+  line-height: 1.5;
+  color: var(--ink);
+  background: var(--paper);
+}
+
+nav[aria-label="site"] {
+  display: flex;
+  gap: 1.25rem;
+  padding: 0.75rem clamp(1rem, 4vw, 2rem);
+  background: var(--accent);
+}
+
+nav[aria-label="site"] a {
+  color: #fff;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+nav[aria-label="site"] a[aria-current="page"] {
+  text-decoration: underline;
+  text-underline-offset: 0.3em;
 }
 
 main {
-  max-width: 40rem;
+  max-width: 72rem;
   margin: 0 auto;
+  padding: 1.5rem clamp(1rem, 4vw, 2rem) 4rem;
+}
+
+h1 {
+  margin: 0 0 0.5rem;
+  font-size: clamp(1.6rem, 4vw, 2.2rem);
+  line-height: 1.2;
+}
+
+h2 {
+  margin: 2rem 0 0.75rem;
+  font-size: 1.3rem;
 }
 
 a {
-  color: #0b5fff;
+  color: var(--link);
 }
 
-form {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  align-items: center;
-  margin-block: 1.5rem;
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
-input {
-  flex: 1;
-  min-width: 12rem;
-  padding: 0.4rem 0.6rem;
+.meta,
+.hint,
+.source {
+  color: var(--muted);
+  font-size: 0.925rem;
+}
+
+.lede {
+  max-width: 40rem;
+  font-size: 1.1rem;
+}
+
+/* --- Forms */
+
+input,
+select,
+button {
   font: inherit;
+}
+
+input:not([type="radio"]),
+select {
+  padding: 0.4rem 0.6rem;
+  border: 1px solid #8a909b;
+  border-radius: 0.3rem;
+  min-width: 0;
 }
 
 button {
   padding: 0.4rem 1rem;
-  font: inherit;
+  border: 1px solid var(--accent);
+  border-radius: 0.3rem;
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
 }
 
-#messages {
-  padding-inline-start: 1.2rem;
+button.quiet {
+  background: transparent;
+  color: var(--accent);
+}
+
+button.danger {
+  border-color: var(--clash);
+  background: transparent;
+  color: var(--clash);
+}
+
+:focus-visible {
+  outline: 3px solid #f2a900;
+  outline-offset: 2px;
+}
+
+form.inline,
+.new-plan {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin-block: 1rem;
+}
+
+form.inline label,
+.new-plan label {
+  font-weight: 600;
+}
+
+.new-plan input {
+  flex: 1 1 14rem;
+  max-width: 24rem;
+}
+
+.add-course select {
+  flex: 1 1 16rem;
+  max-width: 32rem;
+}
+
+/* --- Drafts list */
+
+.plans {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  border-top: 1px solid var(--line);
+}
+
+.plans li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  align-items: baseline;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.plans a {
+  font-weight: 600;
+  font-size: 1.05rem;
+}
+
+.plans .meta {
+  font-size: 0.875rem;
+}
+
+/* --- Plan header and status */
+
+.plan-manage summary {
+  cursor: pointer;
+  color: var(--link);
+  width: fit-content;
+}
+
+.tally {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  list-style: none;
+  padding: 0;
+  margin: 1rem 0;
+}
+
+.tally li {
+  padding: 0.2rem 0.75rem;
+  border-radius: 999px;
+  background: var(--wash);
+  font-weight: 600;
+  font-size: 0.925rem;
+}
+
+.tally .is-todo {
+  background: var(--todo-wash);
+  color: var(--todo);
+}
+
+.tally .is-clash {
+  background: var(--clash-wash);
+  color: var(--clash);
+}
+
+.tally .is-done {
+  background: var(--ok-wash);
+  color: var(--ok);
+}
+
+.problems {
+  padding-inline-start: 1.25rem;
+  margin: 0.5rem 0;
+}
+
+.problems strong {
+  color: var(--clash);
+}
+
+.todo {
+  margin: 0.5rem 0;
+}
+
+/* --- Week grid */
+
+.week-scroll {
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 0.4rem;
+}
+
+.week {
+  display: grid;
+  grid-template-columns: 3.25rem repeat(var(--days), minmax(9.25rem, 1fr));
+  min-width: calc(3.25rem + var(--days) * 9.25rem);
+}
+
+.times {
+  position: relative;
+  margin-top: var(--day-head);
+  height: calc(var(--slots) * var(--slot));
+}
+
+.times span {
+  position: absolute;
+  top: calc(var(--top) * var(--slot));
+  right: 0.4rem;
+  transform: translateY(-0.5em);
+  font-size: 0.75rem;
+  color: var(--muted);
+  line-height: 1;
+}
+
+.times span:first-child {
+  transform: none;
+}
+
+.day {
+  border-left: 1px solid var(--line);
+}
+
+.day h3 {
+  height: var(--day-head);
+  margin: 0;
+  padding: 0.5rem;
+  font-size: 0.9rem;
+  text-align: center;
+  background: var(--wash);
+  border-bottom: 1px solid var(--line);
+}
+
+.slots {
+  position: relative;
+  height: calc(var(--slots) * var(--slot));
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0 calc(2 * var(--slot) - 1px),
+    var(--line) calc(2 * var(--slot) - 1px) calc(2 * var(--slot))
+  );
+}
+
+.session {
+  position: absolute;
+  top: calc(var(--top) * var(--slot));
+  height: calc(var(--len) * var(--slot));
+  left: calc(var(--lane) / var(--lanes) * 100%);
+  width: calc(100% / var(--lanes));
+  display: flex;
+  flex-direction: column;
+  padding: 0.2rem 0.35rem;
+  overflow: hidden;
+  font-size: 0.72rem;
+  line-height: 1.2;
+  border: 1px solid var(--paper);
+  border-left: 4px solid var(--edge);
+  border-radius: 0.25rem;
+  background: var(--fill);
+}
+
+/* a flex column shrinks an overflow-hidden child to nothing; the label is
+   the one line a block must never lose */
+.session > * {
+  flex: none;
+}
+
+.session strong {
+  font-size: 0.75rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.session.is-clash {
+  border: 2px solid var(--clash);
+  border-left-width: 4px;
+  background: repeating-linear-gradient(
+    135deg,
+    var(--fill) 0 0.5rem,
+    var(--clash-wash) 0.5rem 1rem
+  );
+}
+
+.session .flag {
+  margin-right: 0.25rem;
+  padding: 0 0.3rem;
+  border-radius: 0.2rem;
+  background: var(--clash);
+  color: #fff;
+  font-weight: 700;
+}
+
+/* One hue per course, shared by the grid and the course cards. */
+.c0 { --fill: #dbe8fd; --edge: #1d4ed8; }
+.c1 { --fill: #dcf5e3; --edge: #15803d; }
+.c2 { --fill: #fdf0cf; --edge: #b45309; }
+.c3 { --fill: #fbe4f0; --edge: #be185d; }
+.c4 { --fill: #ebe6fd; --edge: #6d28d9; }
+.c5 { --fill: #d4f4ef; --edge: #0f766e; }
+
+/* --- Courses and class options */
+
+.course {
+  margin-block: 1.25rem;
+  padding: 0.75rem 1rem 1rem;
+  border: 1px solid var(--line);
+  border-top: 5px solid var(--edge);
+  border-radius: 0.4rem;
+  scroll-margin-top: 1rem;
+}
+
+.course-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.course-head h3 {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.course-head h3 span {
+  font-weight: 400;
+}
+
+.pick {
+  scroll-margin-top: 1rem;
+}
+
+.pick fieldset {
+  margin: 0.75rem 0 0;
+  padding: 0.5rem 0.75rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 0.3rem;
+}
+
+.pick legend {
+  padding: 0 0.3rem;
+  font-weight: 600;
+}
+
+.pick .code {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.tag {
+  margin-left: 0.5rem;
+  padding: 0.05rem 0.45rem;
+  border-radius: 999px;
+  background: var(--wash);
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.tag.is-todo {
+  background: var(--todo-wash);
+  color: var(--todo);
+}
+
+.options {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
+  gap: 0.35rem 0.75rem;
+  margin: 0.25rem 0 0.75rem;
+  padding: 0;
+  list-style: none;
+}
+
+.options li {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  padding: 0.35rem 0.5rem;
+  border-radius: 0.3rem;
+}
+
+.options li.is-picked {
+  background: var(--fill, var(--wash));
+  outline: 1px solid var(--edge, var(--line));
+}
+
+.options input {
+  margin-top: 0.3rem;
+  flex: none;
+}
+
+.options label {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.options .num {
+  font-weight: 600;
+}
+
+.options .warn {
+  color: var(--clash);
+  font-weight: 600;
+}
+
+/* --- README page */
+
+.prose {
+  max-width: 44rem;
+}
+
+.prose img {
+  max-width: 100%;
+  height: auto;
 }

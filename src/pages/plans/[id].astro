@@ -1,0 +1,335 @@
+---
+import Base from "../../layouts/Base.astro";
+import { getPlan, listCourses, planDetail } from "../../lib/db";
+import {
+  anchor,
+  DAYS,
+  describeWeeks,
+  findClashes,
+  formatTime,
+  type PickedSession,
+  parseWeeks,
+} from "../../lib/timetable";
+
+const id = Number(Astro.params.id);
+const plan = Number.isInteger(id) ? getPlan(id) : undefined;
+if (!plan) Astro.response.status = 404;
+
+const { courses, picked } = plan ? planDetail(plan.id) : { courses: [], picked: [] };
+const inPlan = new Set(courses.map((c) => c.id));
+const addable = listCourses().filter((c) => !inPlan.has(c.id));
+
+// --- What's wrong with the draft so far
+
+const clashes = findClashes(picked);
+const sessionKey = (s: { classId: string; day: number; start: number }) => `${s.classId}|${s.day}|${s.start}`;
+const clashing = new Set(clashes.flatMap((c) => [sessionKey(c.a), sessionKey(c.b)]));
+const activityOf = new Map(
+  courses.flatMap((c) => c.activities.flatMap((a) => a.options.map((o) => [o.id, a.id] as const))),
+);
+const todo = courses.flatMap((course) =>
+  course.activities
+    .filter((a) => !a.optional && a.picked === null)
+    .map((a) => ({ course: course.code, activity: a })),
+);
+
+const label = (s: PickedSession) => `${s.courseCode} ${s.activityCode}/${s.classId.split("/").at(-1)}`;
+const span = (start: number, end: number) => `${formatTime(start)}–${formatTime(end)}`;
+const short = (day: number) => DAYS[day - 1].slice(0, 3);
+const weeksText = (weeks: string) => describeWeeks(parseWeeks(weeks));
+
+type Course = (typeof courses)[number];
+type Activity = Course["activities"][number];
+
+/** What choosing this option would collide with, keeping every other pick —
+ *  the answer to "which tutorial fits?" before you commit to one. */
+function wouldClash(course: Course, activity: Activity, option: Activity["options"][number]) {
+  const others = picked.filter((s) => s.classId !== activity.picked);
+  const mine: PickedSession[] = option.sessions.map((s) => ({
+    ...s,
+    classId: option.id,
+    courseCode: course.code,
+    activityCode: activity.code,
+  }));
+  const texts = findClashes([...others, ...mine])
+    .filter((c) => (c.a.classId === option.id) !== (c.b.classId === option.id))
+    .map((c) => {
+      const other = c.a.classId === option.id ? c.b : c.a;
+      return `${label(other)} (${short(other.day)}, ${describeWeeks(c.weeks)})`;
+    });
+  return [...new Set(texts)];
+}
+
+// --- The week grid: Monday to Friday, 08:00 to 21:00, in half hours
+
+const FIRST = 8 * 60;
+const LAST = 21 * 60;
+const SLOT = 30;
+const days = [1, 2, 3, 4, 5, ...new Set(picked.filter((s) => s.day > 5).map((s) => s.day))].sort();
+const colour = new Map(courses.map((c, i) => [c.code, `c${i % 6}`]));
+
+// Sessions that overlap in time sit side by side, each cluster of overlaps
+// sharing the column between them, so nothing hides behind anything else.
+// (They may still not clash: a week-36 workshop beside a weekly lab.)
+function layout(day: number) {
+  const list = picked.filter((s) => s.day === day).sort((a, b) => a.start - b.start || b.end - a.end);
+  const placed: { s: PickedSession; lane: number; lanes: number }[] = [];
+  let cluster: typeof placed = [];
+  let lanes: number[] = [];
+  let clusterEnd = -1;
+  const close = () => {
+    for (const p of cluster) p.lanes = lanes.length;
+    placed.push(...cluster);
+    cluster = [];
+    lanes = [];
+  };
+  for (const s of list) {
+    if (s.start >= clusterEnd) close();
+    let lane = lanes.findIndex((end) => end <= s.start);
+    if (lane === -1) lane = lanes.push(s.end) - 1;
+    else lanes[lane] = s.end;
+    cluster.push({ s, lane, lanes: 0 });
+    clusterEnd = Math.max(clusterEnd, s.end);
+  }
+  close();
+  return placed.map(({ s, lane, lanes }) => ({
+    s,
+    style: [
+      `--top:${(Math.max(s.start, FIRST) - FIRST) / SLOT}`,
+      `--len:${(Math.min(s.end, LAST) - Math.max(s.start, FIRST)) / SLOT}`,
+      `--lane:${lane}`,
+      `--lanes:${lanes}`,
+    ].join(";"),
+  }));
+}
+const hours = Array.from({ length: (LAST - FIRST) / 60 }, (_, i) => FIRST + i * 60);
+
+const saved = plan
+  ? new Date(plan.updatedAt).toLocaleString("en-AU", {
+      day: "numeric",
+      month: "short",
+      hour: "numeric",
+      minute: "2-digit",
+      timeZone: "Australia/Sydney",
+    })
+  : "";
+const action = plan ? `/api/plans/${plan.id}` : "";
+---
+
+<Base title={plan ? `${plan.name} · Timetable planner` : "Draft not found · Timetable planner"}>
+  {
+    !plan ? (
+      <>
+        <h1>Draft not found</h1>
+        <p>
+          There's no draft with this address. It may have been deleted. <a href="/">Back to your drafts</a>.
+        </p>
+      </>
+    ) : (
+      <div class="plan" data-plan={plan.id} data-updated={plan.updatedAt}>
+        <header class="plan-head">
+          <h1>{plan.name}</h1>
+          <p class="meta">Saved {saved}</p>
+          <details class="plan-manage">
+            <summary>Rename or delete</summary>
+            <form method="post" action={action} class="inline">
+              <input type="hidden" name="intent" value="rename" />
+              <label for="rename">Name</label>
+              <input id="rename" name="name" value={plan.name} maxlength="80" required />
+              <button>Rename</button>
+            </form>
+            <form method="post" action={action} class="inline">
+              <input type="hidden" name="intent" value="delete" />
+              <button class="danger">Delete this draft</button>
+            </form>
+          </details>
+        </header>
+
+        <section class="status" aria-labelledby="status-h">
+          <h2 id="status-h" class="visually-hidden">Draft status</h2>
+          {courses.length === 0 ? (
+            <p>Add your first course below to start building a week.</p>
+          ) : (
+            <ul class="tally">
+              <li>{courses.length} {courses.length === 1 ? "course" : "courses"}</li>
+              <li class={todo.length ? "is-todo" : "is-done"}>
+                {todo.length === 0 ? "Every class chosen" : `${todo.length} still to choose`}
+              </li>
+              <li class={clashes.length ? "is-clash" : "is-done"}>
+                {clashes.length === 0 ? "No clashes" : `${clashes.length} ${clashes.length === 1 ? "clash" : "clashes"}`}
+              </li>
+            </ul>
+          )}
+          {clashes.length > 0 && (
+            <ul class="problems">
+              {clashes.map((c) => (
+                <li>
+                  <strong>Clash:</strong>{" "}
+                  <a href={`#${anchor(activityOf.get(c.a.classId) ?? "")}`}>{label(c.a)}</a> and{" "}
+                  <a href={`#${anchor(activityOf.get(c.b.classId) ?? "")}`}>{label(c.b)}</a> overlap{" "}
+                  {DAYS[c.a.day - 1]} {span(Math.max(c.a.start, c.b.start), Math.min(c.a.end, c.b.end))},{" "}
+                  {describeWeeks(c.weeks)}.
+                </li>
+              ))}
+            </ul>
+          )}
+          {todo.length > 0 && (
+            <p class="todo">
+              Still to choose:{" "}
+              {todo.map(({ course, activity }, i) => (
+                <>
+                  {i > 0 && ", "}
+                  <a href={`#${anchor(activity.id)}`}>
+                    {course} {activity.type} {activity.code}
+                  </a>
+                </>
+              ))}
+            </p>
+          )}
+        </section>
+
+        <section class="week-section" aria-labelledby="week-h">
+          <h2 id="week-h">Your week</h2>
+          <p class="hint">Every picked class, whichever weeks it runs. Week numbers are calendar weeks.</p>
+          <div class="week-scroll" tabindex="0" role="region" aria-label="Week grid, scrolls sideways">
+            <div class="week" style={`--days:${days.length};--slots:${(LAST - FIRST) / SLOT}`}>
+              <div class="times" aria-hidden="true">
+                {hours.map((h) => (
+                  <span style={`--top:${(h - FIRST) / SLOT}`}>{formatTime(h)}</span>
+                ))}
+              </div>
+              {days.map((day) => (
+                <div class="day">
+                  <h3>{DAYS[day - 1]}</h3>
+                  <ul class="slots">
+                    {layout(day).map(({ s, style }) => (
+                      <li
+                        class:list={["session", colour.get(s.courseCode), { "is-clash": clashing.has(sessionKey(s)) }]}
+                        style={style}
+                        title={`${label(s)} · ${span(s.start, s.end)} · ${weeksText(s.weeks)}${s.location ? ` · ${s.location}` : ""}`}
+                      >
+                        <strong>{label(s)}</strong>
+                        <span>
+                          {clashing.has(sessionKey(s)) && <span class="flag">Clash</span>}
+                          {span(s.start, s.end)}
+                        </span>
+                        <span>{weeksText(s.weeks)}</span>
+                        {s.location && <span>{s.location}</span>}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section id="courses" class="courses" aria-labelledby="courses-h">
+          <h2 id="courses-h">Courses and classes</h2>
+          {addable.length > 0 && (
+            <form method="post" action={action} class="inline add-course">
+              <input type="hidden" name="intent" value="add-course" />
+              <label for="course">Add a course</label>
+              <select id="course" name="course" required>
+                <option value="">Choose a COMP course…</option>
+                {addable.map((c) => (
+                  <option value={c.id}>
+                    {c.code} {c.title}
+                  </option>
+                ))}
+              </select>
+              <button>Add</button>
+            </form>
+          )}
+
+          {courses.map((course) => (
+            <section class={`course ${colour.get(course.code)}`} id={anchor(course.id)} aria-labelledby={`h-${anchor(course.id)}`}>
+              <div class="course-head">
+                <h3 id={`h-${anchor(course.id)}`}>
+                  {course.code} <span>{course.title}</span>
+                </h3>
+                <form method="post" action={action}>
+                  <input type="hidden" name="intent" value="remove-course" />
+                  <input type="hidden" name="course" value={course.id} />
+                  <button class="quiet" aria-label={`Remove ${course.code}`}>Remove</button>
+                </form>
+              </div>
+              {course.activities.map((activity) => (
+                <form method="post" action={action} class="pick" id={anchor(activity.id)}>
+                  <input type="hidden" name="intent" value="pick" />
+                  <input type="hidden" name="activity" value={activity.id} />
+                  <fieldset>
+                    <legend>
+                      {activity.type} <span class="code">{activity.code}</span>
+                      {activity.optional && <span class="tag">optional</span>}
+                      {!activity.optional && activity.picked === null && <span class="tag is-todo">choose one</span>}
+                    </legend>
+                    <ul class="options">
+                      {activity.options.map((option) => {
+                        const warnings = wouldClash(course, activity, option);
+                        const inputId = `o-${anchor(option.id)}`;
+                        return (
+                          <li class:list={{ "is-picked": option.id === activity.picked }}>
+                            <input type="radio" id={inputId} name="class" value={option.id} checked={option.id === activity.picked} />
+                            <label for={inputId}>
+                              <span class="num">{option.number}</span>
+                              {option.sessions.map((s) => (
+                                <span class="when">
+                                  {short(s.day)} {span(s.start, s.end)} · {weeksText(s.weeks)}
+                                  {s.location ? ` · ${s.location}` : " · no room listed"}
+                                </span>
+                              ))}
+                              {warnings.length > 0 && (
+                                <span class="warn">Clashes with {warnings.join("; ")}</span>
+                              )}
+                            </label>
+                          </li>
+                        );
+                      })}
+                      <li class:list={["none", { "is-picked": activity.picked === null }]}>
+                        <input type="radio" id={`o-${anchor(activity.id)}-none`} name="class" value="" checked={activity.picked === null} />
+                        <label for={`o-${anchor(activity.id)}-none`}>{activity.optional ? "Not going" : "Not chosen yet"}</label>
+                      </li>
+                    </ul>
+                    <button class="save">Save {activity.code}</button>
+                  </fieldset>
+                </form>
+              ))}
+            </section>
+          ))}
+        </section>
+      </div>
+    )
+  }
+</Base>
+
+<script>
+  // Both scripts only enhance: every form above already works as a plain POST.
+  const root = document.querySelector<HTMLElement>(".plan");
+
+  // A pointer click on a class saves it straight away. Keyboard users keep the
+  // Save button, because arrowing through radios changes the selection at
+  // every step and must not submit each one.
+  let pointerAt = 0;
+  let submitting = false;
+  document.addEventListener("pointerup", () => (pointerAt = Date.now()));
+  document.addEventListener("submit", () => (submitting = true));
+  for (const form of document.querySelectorAll<HTMLFormElement>("form.pick")) {
+    form.addEventListener("change", () => {
+      if (Date.now() - pointerAt < 800) form.requestSubmit();
+    });
+  }
+
+  // Another tab (or device) changed this draft: re-render it from the server.
+  // The tab that made the change is already on its way to the new version.
+  if (root) {
+    const planId = Number(root.dataset.plan);
+    const source = new EventSource("/api/events");
+    source.addEventListener("plan", (event) => {
+      const change = JSON.parse((event as MessageEvent).data) as { planId: number; updatedAt: string | null };
+      if (change.planId !== planId || submitting) return;
+      if (change.updatedAt === null) location.assign("/");
+      else if (change.updatedAt !== root.dataset.updated) location.reload();
+    });
+  }
+</script>
