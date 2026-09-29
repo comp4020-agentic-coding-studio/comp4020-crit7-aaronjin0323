@@ -241,7 +241,7 @@ form.inline label,
 /* --- Week grid */
 
 .week-scroll {
-  overflow-x: auto;
+  overflow: auto;
   border: 1px solid var(--line);
   border-radius: 0.4rem;
 }
@@ -347,6 +347,53 @@ form.inline label,
   background: var(--clash);
   color: #fff;
   font-weight: 700;
+}
+
+/* Side by side once the week fits beside a usable course column: the week
+   pins in view and scrolls inside itself when the window is too short for all
+   of it, so picking a class and seeing it land are one glance, not a scroll. */
+@media (min-width: 70rem) {
+  main.wide {
+    max-width: 110rem;
+  }
+
+  .workspace {
+    display: grid;
+    /* the week takes what it needs (its min-width) and the courses the rest,
+       down to a floor below which the week scrolls sideways instead */
+    grid-template-columns: minmax(0, auto) minmax(24rem, 1fr);
+    gap: 1.5rem;
+    align-items: start;
+  }
+
+  .week-section {
+    position: sticky;
+    top: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100dvh - 1.5rem);
+  }
+
+  /* the one child that may shrink, so it scrolls instead of overflowing */
+  .week-scroll {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  .week-section > :not(.week-scroll) {
+    flex: none;
+  }
+
+  /* margins don't collapse in a flex column */
+  .week-section .hint {
+    margin-top: 0;
+  }
+
+  .day h3 {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+  }
 }
 
 /* One hue per course, shared by the grid and the course cards. */

@@ -4,8 +4,10 @@ import "../styles.css";
 
 interface Props {
   title: string;
+  /** Let the page use the whole window, for side-by-side working views. */
+  wide?: boolean;
 }
-const { title } = Astro.props;
+const { title, wide = false } = Astro.props;
 const here = Astro.url.pathname;
 ---
 
@@ -21,7 +23,7 @@ const here = Astro.url.pathname;
       <a href="/" aria-current={here === "/" || here.startsWith("/plans/") ? "page" : undefined}>Planner</a>
       <a href="/readme/" aria-current={here === "/readme/" ? "page" : undefined}>About</a>
     </nav>
-    <main>
+    <main class:list={{ wide }}>
       <slot />
     </main>
   </body>
