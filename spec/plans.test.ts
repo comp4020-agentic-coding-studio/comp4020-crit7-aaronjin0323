@@ -112,8 +112,8 @@ describe("a draft timetable", () => {
   });
 
   it("folds each course, and says what's left even when folded", async () => {
-    // Folding hides the "choose one" tags, so the summary has to carry their
-    // count: it must agree with the tags inside, before and after a pick.
+    // Folding hides the activities' "choose one" tags, so the course summary
+    // has to carry their count: it must agree with them, before and after a pick.
     const plan = await newPlan("Folding draft");
     const action = `/api${plan}`;
     await post(action, { intent: "add-course", course: "COMP2100_S2_(01)" });
@@ -122,8 +122,8 @@ describe("a draft timetable", () => {
       const { doc } = await page(plan);
       const course = doc.querySelector("details.course");
       expect(course?.hasAttribute("open"), "a course starts unfolded, so it works without script").toBe(true);
-      const todo = course?.querySelectorAll("legend .tag.is-todo").length ?? -1;
-      return { todo, text: course?.querySelector("summary .tag")?.textContent };
+      const todo = course?.querySelectorAll(".pick summary .tag.is-todo").length ?? -1;
+      return { todo, text: course?.querySelector(":scope > summary .tag")?.textContent };
     };
 
     const before = await summary();
@@ -138,6 +138,27 @@ describe("a draft timetable", () => {
     const after = await summary();
     expect(after.todo).toBe(before.todo - 1);
     expect(after.text).toBe(after.todo ? `${after.todo} to choose` : "all chosen");
+  });
+
+  it("folds each activity, and names the class chosen when folded", async () => {
+    const plan = await newPlan("Folded activities");
+    const action = `/api${plan}`;
+    await post(action, { intent: "add-course", course: "COMP2100_S2_(01)" });
+    const head = async () => {
+      const { doc } = await page(plan);
+      const fold = doc.querySelector("#COMP2100-S2--01--ComA > details");
+      expect(fold?.hasAttribute("open")).toBe(true);
+      return fold?.querySelector(":scope > summary");
+    };
+
+    const before = await head();
+    expect(before?.querySelector(".chosen")?.textContent).toBe("Not chosen yet");
+    expect(before?.querySelector(".tag")?.textContent).toBe("choose one");
+
+    await post(action, { intent: "pick", activity: "COMP2100_S2_(01)-ComA", class: "COMP2100_S2_(01)-ComA/03" });
+    const after = await head();
+    expect(after?.querySelector(".chosen")?.textContent).toMatch(/^03 · (Mon|Tue|Wed|Thu|Fri) \d\d:\d\d–\d\d:\d\d/);
+    expect(after?.querySelector(".tag")).toBeNull();
   });
 
   it("refuses a class that isn't an option of the activity", async () => {

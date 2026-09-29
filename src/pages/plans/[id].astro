@@ -68,6 +68,25 @@ function wouldClash(course: Course, activity: Activity, option: Activity["option
   return [...new Set(texts)];
 }
 
+/** What a folded activity still says: the class chosen, or that one is needed. */
+function activitySummary(activity: Activity) {
+  const option = activity.options.find((o) => o.id === activity.picked);
+  const optional = activity.optional ? { text: "optional", tone: "" } : null;
+  if (!option)
+    return {
+      chosen: activity.optional ? "Not going" : "Not chosen yet",
+      tag: optional ?? { text: "choose one", tone: "is-todo" },
+    };
+  const [first, ...rest] = option.sessions;
+  const clash = picked.some((s) => s.classId === option.id && clashing.has(sessionKey(s)));
+  return {
+    chosen: first
+      ? `${option.number} · ${short(first.day)} ${span(first.start, first.end)}${rest.length ? ` +${rest.length} more` : ""}`
+      : option.number,
+    tag: clash ? { text: "clash", tone: "is-clash" } : optional,
+  };
+}
+
 // --- The week grid: Monday to Friday, 08:00 to 21:00, in half hours
 
 const FIRST = 8 * 60;
@@ -256,60 +275,70 @@ const action = plan ? `/api/plans/${plan.id}` : "";
             {courses.map((course) => {
               const status = courseStatus(course);
               return (
-                <details class={`course ${colour.get(course.code)}`} id={anchor(course.id)} data-course={course.id} open>
+                <details class={`course ${colour.get(course.code)}`} id={anchor(course.id)} data-fold={course.id} open>
                   <summary class="course-head">
                     <h3>
                       {course.code} <span>{course.title}</span>
                     </h3>
                     <span class={`tag ${status.tone}`}>{status.text}</span>
                   </summary>
-                  {course.activities.map((activity) => (
-                    <form method="post" action={action} class="pick" id={anchor(activity.id)}>
-                      <input type="hidden" name="intent" value="pick" />
-                      <input type="hidden" name="activity" value={activity.id} />
-                      <fieldset>
-                        <legend>
-                          {activity.type} <span class="code">{activity.code}</span>
-                          {activity.optional && <span class="tag">optional</span>}
-                          {!activity.optional && activity.picked === null && <span class="tag is-todo">choose one</span>}
-                        </legend>
-                        <ul class="options">
-                          {activity.options.map((option) => {
-                            const warnings = wouldClash(course, activity, option);
-                            const inputId = `o-${anchor(option.id)}`;
-                            return (
-                              <li class:list={{ "is-picked": option.id === activity.picked }}>
-                                <input type="radio" id={inputId} name="class" value={option.id} checked={option.id === activity.picked} />
-                                <label for={inputId}>
-                                  <span class="num">{option.number}</span>
-                                  {option.sessions.map((s) => (
-                                    <span class="when">
-                                      {short(s.day)} {span(s.start, s.end)} · {weeksText(s.weeks)}
-                                      {s.location ? ` · ${s.location}` : " · no room listed"}
-                                    </span>
-                                  ))}
-                                  {warnings.length > 0 && (
-                                    <span class="warn">Clashes with {warnings.join("; ")}</span>
-                                  )}
-                                </label>
+                  {course.activities.map((activity) => {
+                    const summary = activitySummary(activity);
+                    return (
+                      <form method="post" action={action} class="pick" id={anchor(activity.id)}>
+                        <input type="hidden" name="intent" value="pick" />
+                        <input type="hidden" name="activity" value={activity.id} />
+                        <details data-fold={activity.id} open>
+                          <summary class="pick-head">
+                            <span>
+                              {activity.type} <span class="code">{activity.code}</span>
+                            </span>
+                            {summary.tag && <span class={`tag ${summary.tag.tone}`}>{summary.tag.text}</span>}
+                            <span class="chosen">{summary.chosen}</span>
+                          </summary>
+                          <fieldset>
+                            <legend class="visually-hidden">
+                              {activity.type} {activity.code}
+                            </legend>
+                            <ul class="options">
+                              {activity.options.map((option) => {
+                                const warnings = wouldClash(course, activity, option);
+                                const inputId = `o-${anchor(option.id)}`;
+                                return (
+                                  <li class:list={{ "is-picked": option.id === activity.picked }}>
+                                    <input type="radio" id={inputId} name="class" value={option.id} checked={option.id === activity.picked} />
+                                    <label for={inputId}>
+                                      <span class="num">{option.number}</span>
+                                      {option.sessions.map((s) => (
+                                        <span class="when">
+                                          {short(s.day)} {span(s.start, s.end)} · {weeksText(s.weeks)}
+                                          {s.location ? ` · ${s.location}` : " · no room listed"}
+                                        </span>
+                                      ))}
+                                      {warnings.length > 0 && (
+                                        <span class="warn">Clashes with {warnings.join("; ")}</span>
+                                      )}
+                                    </label>
+                                  </li>
+                                );
+                              })}
+                              <li class:list={["none", { "is-picked": activity.picked === null }]}>
+                                <input type="radio" id={`o-${anchor(activity.id)}-none`} name="class" value="" checked={activity.picked === null} />
+                                <label for={`o-${anchor(activity.id)}-none`}>{activity.optional ? "Not going" : "Not chosen yet"}</label>
                               </li>
-                          );
-                        })}
-                        <li class:list={["none", { "is-picked": activity.picked === null }]}>
-                          <input type="radio" id={`o-${anchor(activity.id)}-none`} name="class" value="" checked={activity.picked === null} />
-                          <label for={`o-${anchor(activity.id)}-none`}>{activity.optional ? "Not going" : "Not chosen yet"}</label>
-                        </li>
-                      </ul>
-                      <button class="save">Save {activity.code}</button>
-                    </fieldset>
+                            </ul>
+                            <button class="save">Save {activity.code}</button>
+                          </fieldset>
+                        </details>
+                      </form>
+                    );
+                  })}
+                  <form method="post" action={action} class="remove-course">
+                    <input type="hidden" name="intent" value="remove-course" />
+                    <input type="hidden" name="course" value={course.id} />
+                    <button class="quiet">Remove {course.code}</button>
                   </form>
-                ))}
-                <form method="post" action={action} class="remove-course">
-                  <input type="hidden" name="intent" value="remove-course" />
-                  <input type="hidden" name="course" value={course.id} />
-                  <button class="quiet">Remove {course.code}</button>
-                </form>
-              </details>
+                </details>
               );
             })}
           </section>
@@ -336,11 +365,11 @@ const action = plan ? `/api/plans/${plan.id}` : "";
     });
   }
 
-  // Every save reloads the page, so a folded course would spring open again:
-  // remember the folds per draft in this browser. It's only a view
-  // preference, so losing it (private window, cleared storage) just means
-  // everything starts open, as it does without script.
-  const courses = [...document.querySelectorAll<HTMLDetailsElement>("details.course")];
+  // Every save reloads the page, so a folded course or activity would spring
+  // open again: remember the folds per draft in this browser. It's only a
+  // view preference, so losing it (private window, cleared storage) just
+  // means everything starts open, as it does without script.
+  const folds = [...document.querySelectorAll<HTMLDetailsElement>("details[data-fold]")];
   const foldKey = root ? `folded:${root.dataset.plan}` : "";
   const readFolds = (): string[] => {
     try {
@@ -350,24 +379,29 @@ const action = plan ? `/api/plans/${plan.id}` : "";
     }
   };
   const folded = new Set(readFolds());
-  for (const course of courses) if (folded.has(course.dataset.course ?? "")) course.open = false;
+  for (const fold of folds) if (folded.has(fold.dataset.fold ?? "")) fold.open = false;
 
-  // A link or redirect to a class inside a folded course unfolds it first.
+  // A link or redirect to an activity unfolds it, and the course around it.
   const reveal = (hash: string) => {
     const target = hash.length > 1 ? document.getElementById(decodeURIComponent(hash.slice(1))) : null;
-    const course = target?.closest<HTMLDetailsElement>("details.course");
-    if (course && !course.open) {
-      course.open = true;
-      target?.scrollIntoView();
+    if (!target) return;
+    const shut: HTMLDetailsElement[] = [];
+    const own = target.querySelector<HTMLDetailsElement>(":scope > details");
+    if (own) shut.push(own);
+    for (let d = target.closest("details"); d; d = d.parentElement?.closest("details") ?? null) shut.push(d);
+    const closed = shut.filter((d) => !d.open);
+    if (closed.length) {
+      for (const d of closed) d.open = true;
+      target.scrollIntoView();
     }
   };
   reveal(location.hash);
   window.addEventListener("hashchange", () => reveal(location.hash));
 
-  for (const course of courses) {
-    course.addEventListener("toggle", () => {
-      const id = course.dataset.course ?? "";
-      if (course.open) folded.delete(id);
+  for (const fold of folds) {
+    fold.addEventListener("toggle", () => {
+      const id = fold.dataset.fold ?? "";
+      if (fold.open) folded.delete(id);
       else folded.add(id);
       try {
         localStorage.setItem(foldKey, JSON.stringify([...folded]));

@@ -425,13 +425,15 @@ form.inline label,
   list-style: none;
 }
 
-.course-head::-webkit-details-marker {
+.course-head::-webkit-details-marker,
+.pick-head::-webkit-details-marker {
   display: none;
 }
 
 /* the fold marker, drawn so it sits with the heading rather than before the
-   flex row; it points down when the course is open */
-.course-head h3::before {
+   flex row; it points down when open */
+.course-head h3::before,
+.pick-head::before {
   content: "";
   display: inline-block;
   width: 0.5em;
@@ -443,12 +445,14 @@ form.inline label,
   transition: transform 0.15s;
 }
 
-.course[open] > .course-head h3::before {
+.course[open] > .course-head h3::before,
+.pick details[open] > .pick-head::before {
   transform: translateY(-0.3em) rotate(45deg);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .course-head h3::before {
+  .course-head h3::before,
+  .pick-head::before {
     transition: none;
   }
 }
@@ -475,16 +479,50 @@ form.inline label,
   scroll-margin-top: 1rem;
 }
 
-.pick fieldset {
+.pick details {
   margin: 0.75rem 0 0;
-  padding: 0.5rem 0.75rem 0.75rem;
   border: 1px solid var(--line);
   border-radius: 0.3rem;
 }
 
-.pick legend {
-  padding: 0 0.3rem;
+.pick-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.5rem;
+  align-items: baseline;
+  padding: 0.5rem 0.75rem;
   font-weight: 600;
+  cursor: pointer;
+  list-style: none;
+}
+
+.pick-head::before {
+  flex: none;
+  margin-right: 0;
+}
+
+.pick-head .tag {
+  margin-left: 0;
+}
+
+/* what's chosen, for a folded activity; open, the options say it */
+.pick-head .chosen {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 400;
+}
+
+.pick details[open] .chosen {
+  display: none;
+}
+
+/* the fieldset stays for its radio-group name; the fold draws the box */
+.pick fieldset {
+  min-width: 0;
+  margin: 0;
+  padding: 0 0.75rem 0.75rem;
+  border: 0;
 }
 
 .pick .code {
