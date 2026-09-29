@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { describeWeeks, findClashes, type PickedSession, parseWeeks } from "../src/lib/timetable";
+import { describeWeeks, findClashes, type PickedSession, parseWeeks, unavoidable } from "../src/lib/timetable";
 import { parseClassRow } from "../src/lib/timetable-source";
 
 // The domain rules on their own, no server: what a week range means, when two
@@ -14,6 +14,7 @@ const session = (over: Partial<PickedSession>): PickedSession => ({
   end: 720,
   weeks: "31-36,39-44",
   location: "CSIT N113",
+  fixed: false,
   ...over,
 });
 
@@ -50,6 +51,20 @@ describe("findClashes", () => {
 
   it("ignores different days", () => {
     expect(findClashes([session({ classId: "A/01" }), session({ classId: "B/01", day: 3 })])).toEqual([]);
+  });
+});
+
+describe("unavoidable", () => {
+  const clash = (a: boolean, b: boolean) =>
+    findClashes([session({ classId: "A/01", fixed: a }), session({ classId: "B/01", fixed: b })])[0];
+
+  it("is a clash between two classes that have no other time", () => {
+    expect(unavoidable(clash(true, true))).toBe(true);
+  });
+
+  it("isn't one when either side could be picked at another time", () => {
+    expect(unavoidable(clash(true, false))).toBe(false);
+    expect(unavoidable(clash(false, true))).toBe(false);
   });
 });
 

@@ -1,14 +1,16 @@
 ---
 import Base from "../../layouts/Base.astro";
-import { getPlan, listCourses, planDetail } from "../../lib/db";
+import { fixedSessions, getPlan, listCourses, planDetail } from "../../lib/db";
 import {
   anchor,
+  type Clash,
   DAYS,
   describeWeeks,
   findClashes,
   formatTime,
   type PickedSession,
   parseWeeks,
+  unavoidable,
 } from "../../lib/timetable";
 
 const id = Number(Astro.params.id);
@@ -21,9 +23,16 @@ const addable = listCourses().filter((c) => !inPlan.has(c.id));
 
 // --- What's wrong with the draft so far
 
+// A clash between two classes that have no other time is a fact about the
+// pair of courses, not something to fix, so it's reported apart.
 const clashes = findClashes(picked);
+const fixable = clashes.filter((c) => !unavoidable(c));
+const stuck = clashes.filter(unavoidable);
 const sessionKey = (s: { classId: string; day: number; start: number }) => `${s.classId}|${s.day}|${s.start}`;
-const clashing = new Set(clashes.flatMap((c) => [sessionKey(c.a), sessionKey(c.b)]));
+const inClashes = (list: Clash[]) => new Set(list.flatMap((c) => [sessionKey(c.a), sessionKey(c.b)]));
+const clashing = inClashes(clashes);
+const fixableClashing = inClashes(fixable);
+const stuckClashing = inClashes(stuck);
 const activityOf = new Map(
   courses.flatMap((c) => c.activities.flatMap((a) => a.options.map((o) => [o.id, a.id] as const))),
 );
@@ -34,17 +43,34 @@ const todo = courses.flatMap((course) =>
 );
 
 // What a folded course still says about itself.
+// An unavoidable clash never goes away, so it doesn't hide what's left to choose.
 const courseStatus = (course: (typeof courses)[number]) => {
-  if (picked.some((s) => s.courseCode === course.code && clashing.has(sessionKey(s))))
-    return { text: "clash", tone: "is-clash" };
+  const mine = picked.filter((s) => s.courseCode === course.code);
+  if (mine.some((s) => fixableClashing.has(sessionKey(s)))) return { text: "clash", tone: "is-clash" };
   const left = course.activities.filter((a) => !a.optional && a.picked === null).length;
-  return left ? { text: `${left} to choose`, tone: "is-todo" } : { text: "all chosen", tone: "is-done" };
+  if (left) return { text: `${left} to choose`, tone: "is-todo" };
+  if (mine.some((s) => stuckClashing.has(sessionKey(s)))) return { text: "unavoidable clash", tone: "is-stuck" };
+  return { text: "all chosen", tone: "is-done" };
 };
 
 const label = (s: PickedSession) => `${s.courseCode} ${s.activityCode}/${s.classId.split("/").at(-1)}`;
 const span = (start: number, end: number) => `${formatTime(start)}–${formatTime(end)}`;
 const short = (day: number) => DAYS[day - 1].slice(0, 3);
 const weeksText = (weeks: string) => describeWeeks(parseWeeks(weeks));
+
+// Adding a course brings its fixed classes straight in, so the course list
+// says which courses already in the draft they'd clash with for good.
+const fixedNow = picked.filter((s) => s.fixed);
+const fixedByCourse = fixedNow.length ? fixedSessions() : new Map<string, PickedSession[]>();
+function addWarning(courseId: string) {
+  const incoming = fixedByCourse.get(courseId) ?? [];
+  const isIncoming = (s: PickedSession) => incoming.includes(s);
+  const codes = findClashes([...fixedNow, ...incoming])
+    .filter((c) => isIncoming(c.a) !== isIncoming(c.b))
+    .map((c) => (isIncoming(c.a) ? c.b : c.a).courseCode);
+  return [...new Set(codes)].sort().join(", ");
+}
+const addChoices = addable.map((c) => ({ ...c, warning: addWarning(c.id) }));
 
 type Course = (typeof courses)[number];
 type Activity = Course["activities"][number];
@@ -58,6 +84,7 @@ function wouldClash(course: Course, activity: Activity, option: Activity["option
     classId: option.id,
     courseCode: course.code,
     activityCode: activity.code,
+    fixed: !activity.optional && activity.options.length === 1,
   }));
   const texts = findClashes([...others, ...mine])
     .filter((c) => (c.a.classId === option.id) !== (c.b.classId === option.id))
@@ -78,12 +105,17 @@ function activitySummary(activity: Activity) {
       tag: optional ?? { text: "choose one", tone: "is-todo" },
     };
   const [first, ...rest] = option.sessions;
-  const clash = picked.some((s) => s.classId === option.id && clashing.has(sessionKey(s)));
+  const mine = picked.filter((s) => s.classId === option.id);
+  const tag = mine.some((s) => fixableClashing.has(sessionKey(s)))
+    ? { text: "clash", tone: "is-clash" }
+    : mine.some((s) => stuckClashing.has(sessionKey(s)))
+      ? { text: "unavoidable clash", tone: "is-stuck" }
+      : optional;
   return {
     chosen: first
       ? `${option.number} · ${short(first.day)} ${span(first.start, first.end)}${rest.length ? ` +${rest.length} more` : ""}`
       : option.number,
-    tag: clash ? { text: "clash", tone: "is-clash" } : optional,
+    tag,
   };
 }
 
@@ -182,20 +214,38 @@ const action = plan ? `/api/plans/${plan.id}` : "";
               <li class={todo.length ? "is-todo" : "is-done"}>
                 {todo.length === 0 ? "Every class chosen" : `${todo.length} still to choose`}
               </li>
-              <li class={clashes.length ? "is-clash" : "is-done"}>
-                {clashes.length === 0 ? "No clashes" : `${clashes.length} ${clashes.length === 1 ? "clash" : "clashes"}`}
-              </li>
+              {(fixable.length > 0 || stuck.length === 0) && (
+                <li class={fixable.length ? "is-clash" : "is-done"}>
+                  {fixable.length === 0 ? "No clashes" : `${fixable.length} ${fixable.length === 1 ? "clash" : "clashes"}`}
+                </li>
+              )}
+              {stuck.length > 0 && (
+                <li class="is-stuck">
+                  {stuck.length} unavoidable {stuck.length === 1 ? "clash" : "clashes"}
+                </li>
+              )}
             </ul>
           )}
-          {clashes.length > 0 && (
+          {fixable.length > 0 && (
             <ul class="problems">
-              {clashes.map((c) => (
+              {fixable.map((c) => (
                 <li>
                   <strong>Clash:</strong>{" "}
                   <a href={`#${anchor(activityOf.get(c.a.classId) ?? "")}`}>{label(c.a)}</a> and{" "}
                   <a href={`#${anchor(activityOf.get(c.b.classId) ?? "")}`}>{label(c.b)}</a> overlap{" "}
                   {DAYS[c.a.day - 1]} {span(Math.max(c.a.start, c.b.start), Math.min(c.a.end, c.b.end))},{" "}
                   {describeWeeks(c.weeks)}.
+                </li>
+              ))}
+            </ul>
+          )}
+          {stuck.length > 0 && (
+            <ul class="problems stuck">
+              {stuck.map((c) => (
+                <li>
+                  <strong>Can't be avoided:</strong> {label(c.a)} and {label(c.b)} overlap {DAYS[c.a.day - 1]}{" "}
+                  {span(Math.max(c.a.start, c.b.start), Math.min(c.a.end, c.b.end))}, {describeWeeks(c.weeks)}. Neither is
+                  offered at another time.
                 </li>
               ))}
             </ul>
@@ -262,14 +312,20 @@ const action = plan ? `/api/plans/${plan.id}` : "";
                 <label for="course">Add a course</label>
                 <select id="course" name="course" required>
                   <option value="">Choose a COMP course…</option>
-                  {addable.map((c) => (
+                  {addChoices.map((c) => (
                     <option value={c.id}>
-                      {c.code} {c.title}
+                      {`${c.code} ${c.title}${c.warning ? ` — unavoidable clash with ${c.warning}` : ""}`}
                     </option>
                   ))}
                 </select>
                 <button>Add</button>
               </form>
+            )}
+            {addChoices.some((c) => c.warning) && (
+              <p class="hint">
+                An "unavoidable clash" course has a class at the same time as one already in this draft, and neither
+                is offered at another time.
+              </p>
             )}
 
             {courses.map((course) => {

@@ -310,6 +310,14 @@ form.inline label,
   color: var(--clash);
 }
 
+/* a clash no pick can fix: still red, but outlined, since there's nothing to act on */
+.tally .is-stuck,
+.tag.is-stuck {
+  box-shadow: inset 0 0 0 1px var(--clash);
+  background: var(--paper);
+  color: var(--clash);
+}
+
 .tally .is-done {
   background: var(--ok-wash);
   color: var(--ok);

@@ -321,10 +321,45 @@ export function planDetail(planId: number) {
             courseCode: course.code,
             activityCode: activity.code,
             ...s,
+            fixed: !activity.optional && activity.options.length === 1,
           })),
         ),
     ),
   );
 
   return { courses: views, picked };
+}
+
+/** Every course's classes that can't be moved (the only option of a required
+ *  activity), keyed by course id: what adding a course brings with it before
+ *  anything is chosen. */
+export function fixedSessions(): Map<string, PickedSession[]> {
+  const rows = db
+    .select({
+      courseId: courses.id,
+      courseCode: courses.code,
+      activityId: activities.id,
+      activityCode: activities.code,
+      optional: activities.optional,
+      classId: classes.id,
+      day: sessions.day,
+      start: sessions.start,
+      end: sessions.end,
+      weeks: sessions.weeks,
+      location: sessions.location,
+    })
+    .from(sessions)
+    .innerJoin(classes, eq(classes.id, sessions.classId))
+    .innerJoin(activities, eq(activities.id, classes.activityId))
+    .innerJoin(courses, eq(courses.id, activities.courseId))
+    .all();
+  const options = new Map<string, Set<string>>();
+  for (const row of rows) options.set(row.activityId, (options.get(row.activityId) ?? new Set()).add(row.classId));
+
+  const fixed = new Map<string, PickedSession[]>();
+  for (const { courseId, activityId, optional, ...session } of rows) {
+    if (optional || options.get(activityId)?.size !== 1) continue;
+    fixed.set(courseId, [...(fixed.get(courseId) ?? []), { ...session, fixed: true }]);
+  }
+  return fixed;
 }

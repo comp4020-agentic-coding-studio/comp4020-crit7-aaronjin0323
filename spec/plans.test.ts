@@ -111,6 +111,40 @@ describe("a draft timetable", () => {
     expect(after.doc.querySelector(".tally .is-clash")?.textContent).toMatch(/^\d+ clash(es)?$/);
   });
 
+  it("tells a clash no pick can fix apart from one a pick can", async () => {
+    // Every lecture has one stream: COMP1100 LecB and COMP3300 LecB both sit on
+    // Tuesday 10:00, and neither is offered at another time. The page must say
+    // so, not send you to a choice that doesn't exist.
+    const plan = await newPlan("Fixed clash");
+    const action = `/api${plan}`;
+    await post(action, { intent: "add-course", course: "COMP1100_S2_(01)" });
+    await post(action, { intent: "add-course", course: "COMP3300_S2_(01)" });
+
+    const { doc } = await page(plan);
+    const stuck = [...doc.querySelectorAll(".problems.stuck li")];
+    expect(stuck.map((li) => li.textContent?.replace(/\s+/g, " ").trim())).toContain(
+      "Can't be avoided: COMP1100 LecB/01 and COMP3300 LecB/01 overlap Tuesday 10:00–11:00, weeks 31–36, 39–44. Neither is offered at another time.",
+    );
+    for (const li of stuck) expect(li.querySelector("a"), "no link to a pick that can't change").toBeNull();
+    expect(doc.querySelector(".tally .is-stuck")?.textContent).toBe(
+      `${stuck.length} unavoidable ${stuck.length === 1 ? "clash" : "clashes"}`,
+    );
+    // nothing here is fixable, so nothing is reported as a clash to fix
+    expect(doc.querySelector(".tally .is-clash")).toBeNull();
+    expect(doc.querySelector(".problems:not(.stuck)")).toBeNull();
+    const lecture = doc.querySelector("#COMP1100-S2--01--LecB > details > summary .tag");
+    expect(lecture?.textContent).toBe("unavoidable clash");
+  });
+
+  it("warns, before a course is added, that it would bring a clash no pick can fix", async () => {
+    const plan = await newPlan("Warned add");
+    await post(`/api${plan}`, { intent: "add-course", course: "COMP1100_S2_(01)" });
+    const { doc } = await page(plan);
+    const option = (id: string) => doc.querySelector(`.add-course option[value="${id}"]`)?.textContent ?? "";
+    expect(option("COMP3300_S2_(01)")).toMatch(/^COMP3300 .+ — unavoidable clash with COMP1100$/);
+    expect(option("COMP2100_S2_(01)")).toMatch(/^COMP2100 Software Construction$/);
+  });
+
   it("folds each course, and says what's left even when folded", async () => {
     // Folding hides the activities' "choose one" tags, so the course summary
     // has to carry their count: it must agree with them, before and after a pick.

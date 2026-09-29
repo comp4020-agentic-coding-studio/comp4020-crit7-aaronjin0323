@@ -37,6 +37,8 @@ export interface PickedSession {
   end: number;
   weeks: string;
   location: string;
+  /** Its activity has no other class to choose, so it can't be moved. */
+  fixed: boolean;
 }
 
 export interface Clash {
@@ -64,6 +66,9 @@ export function findClashes(sessions: PickedSession[]): Clash[] {
   }
   return clashes;
 }
+
+/** A clash no choice can fix: neither class is offered at another time. */
+export const unavoidable = (clash: Clash) => clash.a.fixed && clash.b.fixed;
 
 /** "32-36,39-44" as a reader wants it: "weeks 32–36, 39–44". */
 export function describeWeeks(weeks: number[]): string {

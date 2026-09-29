@@ -38,6 +38,13 @@ classes it would collide with, given your other picks. That's the question you
 actually have ("which tutorial fits?"), and answering it is what the enrolment
 system doesn't do.
 
+**Some clashes can't be fixed, and the app says so.** Every lecture in S2 2026
+runs at one time only, so two courses whose lectures overlap can't both be
+attended as timetabled. When neither class has another time, the clash is
+listed as "can't be avoided" rather than sent to a choice that doesn't exist.
+The "Add a course" list marks courses that would bring one in, so you find
+out before adding them, not after.
+
 **It works without JavaScript.** Every change is a plain form POST answered
 with a redirect, and the page is re-rendered from the database. Script adds two
 things: a mouse click on a class saves it immediately, and other open tabs
@@ -51,6 +58,8 @@ What `pnpm check` enforces (`spec/`):
 - a draft keeps its courses and picks across a fresh request;
 - single-option activities fill themselves in;
 - a clash is flagged, with its weeks;
+- a clash between two classes with no other time is reported as unavoidable,
+  and the course list warns before a course would bring one in;
 - a class that doesn't belong to the activity, or a pick for a course not in
   the draft, is refused;
 - removing a course removes its picks;
