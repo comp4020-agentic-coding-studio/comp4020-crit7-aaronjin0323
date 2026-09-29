@@ -88,7 +88,7 @@ and it failed when the summary ignored the pick
 ([`0b49f27`](https://github.com/comp4020-agentic-coding-studio/comp4020-crit7-aaronjin0323/commit/0b49f27)).
 Checked at 1440 and 390 wide: folds survive a reload, and there's no overflow.
 
-Last, I asked to "use the style of ANU official websites". Following the
+Then I asked to "use the style of ANU official websites". Following the
 grounding rule again, the palette and type came from anu.edu.au's own
 stylesheet, their `una-` design tokens and button classes, not from memory:
 Public Sans, ANU gold, the black nav band, and their status colours. It
@@ -98,6 +98,18 @@ through the week's black corner, and that corner sitting 3px low. Both are
 now CLAUDE.md lessons. Axe's contrast rule, which the suite turns off, was
 run in the browser instead: no violations
 ([`e12bd95`](https://github.com/comp4020-agentic-coding-studio/comp4020-crit7-aaronjin0323/commit/e12bd95)).
+
+**Correcting a rule from my own knowledge of ANU timetables.** Looking at the
+deployed app, I asked what happens when "2 lecture clashes in one same time
+slot? There is no choice for lecture time". The app flagged it like any other
+clash and linked to the lecture, whose only alternative was "Not chosen yet".
+The data backed me up: every S2 lecture has one stream, and 216 course pairs
+collide on classes like that. A clash between two classes with no other time
+is now listed as "can't be avoided", and it doesn't hide what's still to
+choose. The "Add a course" list warns before a course brings one in. Both
+page tests were seen to fail first, and the rule's unit test failed when
+`&&` was mutated to `||`
+([`db72d69`](https://github.com/comp4020-agentic-coding-studio/comp4020-crit7-aaronjin0323/commit/db72d69)).
 
 **How I know it's right.** `pnpm check` holds the flow. I held the grid layout
 by measuring the rendered page: no horizontal overflow at 390px, and no clipped
