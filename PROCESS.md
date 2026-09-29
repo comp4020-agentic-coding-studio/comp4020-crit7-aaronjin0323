@@ -88,6 +88,17 @@ and it failed when the summary ignored the pick
 ([`0b49f27`](https://github.com/comp4020-agentic-coding-studio/comp4020-crit7-aaronjin0323/commit/0b49f27)).
 Checked at 1440 and 390 wide: folds survive a reload, and there's no overflow.
 
+Last, I asked to "use the style of ANU official websites". Following the
+grounding rule again, the palette and type came from anu.edu.au's own
+stylesheet, their `una-` design tokens and button classes, not from memory:
+Public Sans, ANU gold, the black nav band, and their status colours. It
+borrows the look but not the crest or the name, since it isn't an ANU
+service. Looking at the result caught two things: hour labels showing
+through the week's black corner, and that corner sitting 3px low. Both are
+now CLAUDE.md lessons. Axe's contrast rule, which the suite turns off, was
+run in the browser instead: no violations
+([`e12bd95`](https://github.com/comp4020-agentic-coding-studio/comp4020-crit7-aaronjin0323/commit/e12bd95)).
+
 **How I know it's right.** `pnpm check` holds the flow. I held the grid layout
 by measuring the rendered page: no horizontal overflow at 390px, and no clipped
 block at either width. I hold the data by keeping the scraper committed next to
