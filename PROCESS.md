@@ -80,6 +80,14 @@ remembered per draft, and a "still to choose" link unfolds the course it
 points into
 ([`1f8c7c6`](https://github.com/comp4020-agentic-coding-studio/comp4020-crit7-aaronjin0323/commit/1f8c7c6)).
 
+Then I asked for the same inside a card: "small tabs like 'Assessment',
+'Lecture', should also be foldable". Folding an activity hides the class
+picked in it, so a folded head names that class and its first session, or
+says none is chosen yet. A spec test checks the head before and after a pick,
+and it failed when the summary ignored the pick
+([`0b49f27`](https://github.com/comp4020-agentic-coding-studio/comp4020-crit7-aaronjin0323/commit/0b49f27)).
+Checked at 1440 and 390 wide: folds survive a reload, and there's no overflow.
+
 **How I know it's right.** `pnpm check` holds the flow. I held the grid layout
 by measuring the rendered page: no horizontal overflow at 390px, and no clipped
 block at either width. I hold the data by keeping the scraper committed next to
