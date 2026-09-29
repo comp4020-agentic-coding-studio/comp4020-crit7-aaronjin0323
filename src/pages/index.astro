@@ -3,6 +3,8 @@ import Base from "../layouts/Base.astro";
 import { listPlans, TIMETABLE } from "../lib/db";
 
 const plans = listPlans();
+// the scrape records "<url> (what was filtered)"; the link wants just the url
+const sourceUrl = TIMETABLE.source.split(" ")[0];
 const scraped = new Date(TIMETABLE.scrapedAt).toLocaleDateString("en-AU", {
   day: "numeric",
   month: "long",
@@ -27,7 +29,7 @@ const edited = (iso: string) =>
     week. Drafts are saved as you go.
   </p>
   <p class="source">
-    Class times from the <a href={TIMETABLE.source}>ANU public timetable</a>, copied on {scraped}.
+    Class times from the <a href={sourceUrl}>ANU public timetable</a>, copied on {scraped}.
     Check the official timetable before you enrol.
   </p>
 

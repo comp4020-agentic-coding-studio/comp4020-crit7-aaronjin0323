@@ -35,6 +35,14 @@ const checked = (doc: Document, activity: string) =>
   (doc.querySelector(`form.pick input[name="activity"][value="${activity}"]`)?.closest("form")
     ?.querySelector("input[name=class]:checked") as HTMLInputElement | null)?.value;
 
+describe("the home page", () => {
+  it("links the timetable it was copied from with a real URL", async () => {
+    const { doc } = await page("/");
+    const href = doc.querySelector(".source a")?.getAttribute("href") ?? "";
+    expect(href).toMatch(/^https:\/\/timetabling\.anu\.edu\.au\/\S+$/);
+  });
+});
+
 describe("a draft timetable", () => {
   it("is listed on the home page once started", async () => {
     const plan = await newPlan("Listed draft");
