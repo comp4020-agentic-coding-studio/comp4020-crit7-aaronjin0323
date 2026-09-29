@@ -158,6 +158,17 @@ these tools, not tied to any one prototype's content.
   non-breaking hyphen (U+2011) in `32‑36` splits on nothing a plain `-` split
   finds. Normalise scraped input at the boundary and test the parser on the
   raw bytes, not a retyped sample.
+- **A flex column shrinks an `overflow: hidden` child to nothing.** Its
+  automatic minimum size drops to zero, so the one line a small box must
+  never lose disappears first. Give children `flex: none` (or `min-height`)
+  when the box is fixed-height.
+- **Headless Chrome's `--window-size` has a minimum width**, so a "390px"
+  screenshot is really wider and reports overflow that isn't there. Emulate
+  the viewport through CDP (`Emulation.setDeviceMetricsOverride`, `mobile`
+  on) and check `scrollWidth` against it.
+- **A recorded "source" field is not necessarily a bare URL.** Notes get
+  appended to it. Anything that turns data into an `href` extracts and tests
+  the URL shape, or the link checker finds it after the deploy.
 
 ## Shell
 
