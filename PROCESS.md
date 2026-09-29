@@ -72,6 +72,14 @@ It was checked by measuring, not by eye: scrolled 1800px down the list, the
 week still sits 12px from the top. No page overflow at 1440, 1280, 1150 or 390
 wide.
 
+Next I asked for the course cards to be foldable. A folded card hides its
+"choose one" tags, so its header now carries the count itself. A spec test
+holds that count to the tags inside, and it was seen to fail when the count
+also included optional classes. Every save reloads the page, so the folds are
+remembered per draft, and a "still to choose" link unfolds the course it
+points into
+([`1f8c7c6`](https://github.com/comp4020-agentic-coding-studio/comp4020-crit7-aaronjin0323/commit/1f8c7c6)).
+
 **How I know it's right.** `pnpm check` holds the flow. I held the grid layout
 by measuring the rendered page: no horizontal overflow at 390px, and no clipped
 block at either width. I hold the data by keeping the scraper committed next to
